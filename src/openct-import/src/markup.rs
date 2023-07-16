@@ -30,6 +30,7 @@ pub enum Token {
 	Choice1(String),
 	Choice2(String),
 	Choice3(String),
+	Choice4(String),
 	ConfigButton,
 	Crono,
 	DashButton,
@@ -73,6 +74,7 @@ fn choice(input: &str) -> IResult<&str, Token> {
 		1 => Ok((input, Token::Choice1(txt.to_owned()))),
 		2 => Ok((input, Token::Choice2(txt.to_owned()))),
 		3 => Ok((input, Token::Choice3(txt.to_owned()))),
+		4 => Ok((input, Token::Choice4(txt.to_owned()))),
 		_ => Ok((input, Token::Unknown)),
 	}
 }
