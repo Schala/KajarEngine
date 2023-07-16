@@ -20,7 +20,7 @@ use std::{
 use crate::util::tag;
 
 /// SEAD file header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct Header {
 	id: u32,
@@ -63,7 +63,7 @@ impl From<u32> for ChunkType {
 }
 
 /// SEAD chunk table metadata
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct ChkTblEntry {
 	id: u32,
@@ -75,7 +75,7 @@ struct ChkTblEntry {
 }
 
 /// SEAD sound header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct SndHdr {
 	ver: u8,
@@ -99,7 +99,7 @@ struct SndHdr {
 }
 
 /// SEAD sequence entry
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct SeqInfo {
 	_ver: u8,
@@ -111,7 +111,7 @@ struct SeqInfo {
 }
 
 /// SEAD old sequence
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct OldSeq {
 	_cfg: [u8; 12],
@@ -122,7 +122,7 @@ struct OldSeq {
 }
 
 /// SEAD new sequence
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct NewSeq {
 	_id: u16,
@@ -132,7 +132,7 @@ struct NewSeq {
 }
 
 /// SEAD sequence header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct SeqHdr {
 	ver: u16,
@@ -141,7 +141,7 @@ struct SeqHdr {
 }
 
 /// SEAD track
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct Track {
 	_ver: u8,
@@ -155,7 +155,7 @@ struct Track {
 }
 
 /// SEAD sequence command header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct SeqCmdHdr {
 	_ver: u8,
@@ -165,7 +165,7 @@ struct SeqCmdHdr {
 }
 
 /// SEAD sequence command track
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct CmdTrack {
 	trk_idx: u32,
@@ -176,7 +176,7 @@ struct CmdTrack {
 }
 
 /// SEAD material header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct MatHdr {
 	_ver: u8,
@@ -187,7 +187,7 @@ struct MatHdr {
 }
 
 /// SEAD stream header
-#[derive(Clone, Debug, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 #[repr(C)]
 struct StreamHdr {
 	_ver: u8,

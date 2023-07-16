@@ -26,3 +26,4 @@ pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
 
 	Ok(s)
 }
+

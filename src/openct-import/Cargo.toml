@@ -1,5 +1,5 @@
 [package]
-name = "openct"
+name = "openct-import"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
-bevy = "0.11"
 bitflags = "2.3.2"
 bytemuck = "1.13.1"
 bytes = "1.4.0"
+csv = "1.2.2"
 flate2 = "1.0.26"
-murmurhash32 = "0.3"
+nom = "7.1.3"

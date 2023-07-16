@@ -20,8 +20,8 @@ use std::{
 };
 
 use crate::{
-	tag,
-	util::read_cstr
+	read_cstr,
+	tag
 };
 
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
