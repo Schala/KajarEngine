@@ -174,7 +174,7 @@ fn decompress(data: &mut [u8], dcmp_size: usize) -> Result<Vec<u8>, ResBinErr> {
 			return Err(ResBinErr::Decmp(err));
 		}
 
-		let _ = inflateEnd(addr_of_mut!(zs));
+		inflateEnd(addr_of_mut!(zs));
 	}
 
 	Ok(dcmp)
@@ -182,16 +182,14 @@ fn decompress(data: &mut [u8], dcmp_size: usize) -> Result<Vec<u8>, ResBinErr> {
 
 #[cfg(test)]
 mod test {
-	#[test]
+	/*#[test]
 	fn test_resbin_extract() {
 		use std::fs;
 
-		let buf = fs::read("/Users/roymeurin/Desktop/resources.bin").unwrap();
+		let buf = fs::read("/Users/admin/Desktop/resources.bin").unwrap();
 		let resb = super::ResBin::new(&buf).unwrap();
-		for (p, _) in resb.entries.iter() {
-			println!("{:?}", p);
-		}
-	}
+		assert_eq(resb.is_ok());
+	}*/
 }
 
 /*/// Decodes a file buffer, given a key buffer

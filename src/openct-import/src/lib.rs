@@ -11,8 +11,8 @@ use std::io::{
 	Read
 };
 
-//pub mod markup;
-pub mod resbin;
+pub(crate) mod markup;
+pub(crate) mod resbin;
 
 /// Converts a 4-byte string into a 32-bit big endian integer.
 /// Byte strings longer than 4 bytes are truncated.
@@ -24,7 +24,7 @@ macro_rules! tag {
 }
 
 /// Reads a null-terminated string from a buffer
-pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
+pub(crate) fn read_cstr(mut buf: impl Read) -> io::Result<String> {
 	let mut s = String::new();
 	let mut b = [0; 1];
 
@@ -42,9 +42,9 @@ pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and 
 /// trailing whitespace, returning the output of `inner`.
-pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+pub(crate) fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
 	F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
-	delimited(multispace0, inner,multispace0)
+	delimited(multispace0, inner, multispace0)
 }
