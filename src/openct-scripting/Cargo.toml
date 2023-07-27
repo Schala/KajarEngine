@@ -1,5 +1,5 @@
 [package]
-name = "openct-import"
+name = "openct-scripting"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,10 +9,4 @@ edition = "2021"
 anyhow = "1.0.71"
 bitflags = "2.3.2"
 bytemuck = "1.13.1"
-bytemuck_derive = "1.4.1"
 bytes = "1.4.0"
-indexmap = "2.0.0"
-lazy_static = "1.4.0"
-libz-sys = "1.1.11"
-murmurhash32 = "0.3.0"
-nom = "7.1.3"

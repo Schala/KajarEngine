@@ -12,7 +12,7 @@ def decode(buf, offset=0):
 	out = b''
 	for b in buf:
 		seed = (seed * 0x41C64E6D + 12345) & 0xFFFFFFFF
-		out += (b ^ (seed >> 24)).to_bytes(1)
+		out += (int(b) ^ (seed >> 24)).to_bytes(1)
 	return out
 
 if len(sys.argv) > 1:
@@ -37,4 +37,4 @@ if len(sys.argv) > 1:
 				paths.append(struct.unpack_from('s', dcmp, e.path_offset)[0].decode('utf-8'))
 			for p in paths:
 				print(p)
-			#f2.write(dcmp)
+			f2.write(dcmp)

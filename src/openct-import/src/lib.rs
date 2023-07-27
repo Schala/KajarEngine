@@ -11,6 +11,9 @@ use std::io::{
 	Read
 };
 
+//pub mod markup;
+pub mod resbin;
+
 /// Converts a 4-byte string into a 32-bit big endian integer.
 /// Byte strings longer than 4 bytes are truncated.
 #[macro_export]
@@ -25,10 +28,12 @@ pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
 	let mut s = String::new();
 	let mut b = [0; 1];
 
-	while b[0] != 0 {
+	loop {
 		buf.read_exact(&mut b)?;
 		if b[0] != 0 {
 			s.push(b[0] as char);
+		} else {
+			break;
 		}
 	}
 

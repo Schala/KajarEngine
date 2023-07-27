@@ -17,7 +17,7 @@ use std::{
 	}
 };
 
-use crate::util::tag;
+use crate::tag;
 
 /// SEAD file header
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]

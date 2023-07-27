@@ -1,22 +1,44 @@
 // Credit to https://github.com/jimzrt/ChronoMod
 
 use bytes::Buf;
-use flate2::read::DeflateDecoder;
 
 use bytemuck::{
 	bytes_of_mut,
+	Zeroable,
+};
+
+use bytemuck_derive::{
 	Pod,
-	Zeroable
+	Zeroable,
+};
+
+use libz_sys::{
+	Bytef,
+	inflate,
+	inflateEnd,
+	inflateInit2_,
+	uInt,
+	Z_FINISH,
+	Z_OK,
+	z_stream,
+	Z_STREAM_END,
+	zlibVersion,
 };
 
 use std::{
 	collections::HashMap,
+	ffi::c_int,
 	io::{
-		self,
 		Cursor,
-		Read
+		Read,
+		self
+	},
+	mem::{
+		MaybeUninit,
+		size_of
 	},
 	path::PathBuf,
+	ptr::addr_of_mut
 };
 
 use crate::{
@@ -51,6 +73,7 @@ pub struct ResBin {
 #[derive(Debug)]
 pub enum ResBinErr {
 	CmpRead(io::Error),
+	Decmp(c_int),
 	EntryDataRead(PathBuf, io::Error),
 	EntryRead(io::Error),
 	HeaderMismatch(u32),
@@ -68,7 +91,7 @@ impl ResBin {
 			return Err(ResBinErr::HeaderRead(e));
 		}
 
-		decode(0, bytes_of_mut(&mut header))?;
+		decode(0, bytes_of_mut(&mut header));
 
 		if header.sig != tag!(b"ARC1") {
 			return Err(ResBinErr::HeaderMismatch(header.sig));
@@ -79,13 +102,9 @@ impl ResBin {
 		if let Err(e) = cur.read_exact(&mut cmp[..]) {
 			return Err(ResBinErr::CmpRead(e));
 		}
-dbg!(&header);
-		decode(header.offs, &mut cmp[..])?;
-		let mut dcmp = vec![0; header.size as usize];
-		if let Err(e) = DeflateDecoder::new(&cmp[4..]).read_exact(&mut dcmp) {
-			dbg!(&cmp);
-			return Err(ResBinErr::Inflate(e));
-		}
+
+		decode(header.offs, &mut cmp[..]);
+		let dcmp = decompress(&mut cmp[4..], header.size as usize)?;
 
 		let mut c = Cursor::new(&dcmp[..]);
 		let n = c.get_u32_le();
@@ -103,10 +122,11 @@ dbg!(&header);
 
 			if let Ok(s) = read_cstr(&mut c) {
 				let path = PathBuf::from(s);
+				dbg!(&path);
 				let mut data = vec![0; ent.size as usize];
 
-				c.set_position(ent.data_offs as u64);
-				if let Err(e) = c.read_exact(&mut data[..]) {
+				cur.set_position(ent.data_offs as u64);
+				if let Err(e) = cur.read_exact(&mut data[..]) {
 					return Err(ResBinErr::EntryDataRead(path, e));
 				}
 				entries.insert(path, data);
@@ -120,15 +140,58 @@ dbg!(&header);
 }
 
 /// Decodes a block of data
-fn decode(offs: u32, data: &mut [u8]) -> Result<(), ResBinErr> {
+fn decode(offs: u32, data: &mut [u8]) {
 	// Decoding uses a common PRNG algorithm
 	let mut seed = 0x19000000 + offs;
 	data.iter_mut().for_each(|b| {
 		seed = seed.wrapping_mul(0x41C64E6D).wrapping_add(12345);
 		*b = ((*b as u32) ^ seed >> 24) as u8;
 	});
+}
 
-	Ok(())
+/// Inflates zlib-compressed data
+fn decompress(data: &mut [u8], dcmp_size: usize) -> Result<Vec<u8>, ResBinErr> {
+	let mut dcmp = vec![0; dcmp_size];
+
+	unsafe {
+		let zs_ = MaybeUninit::<z_stream>::zeroed();
+		let mut zs = zs_.assume_init();
+		let ver = zlibVersion();
+
+		zs.next_in = data.as_mut_ptr() as *mut Bytef;
+		zs.avail_in = data.len() as uInt;
+		zs.next_out = dcmp.as_mut_ptr() as *mut Bytef;
+		zs.avail_out = dcmp_size as uInt;
+
+		// decompression uses a custom window of 31 bits
+		let err = inflateInit2_(addr_of_mut!(zs), 31, ver, size_of::<z_stream>() as c_int);
+		if err != Z_OK {
+			return Err(ResBinErr::Decmp(err));
+		}
+
+		let err = inflate(addr_of_mut!(zs), Z_FINISH);
+		if err != Z_STREAM_END {
+			return Err(ResBinErr::Decmp(err));
+		}
+
+		let _ = inflateEnd(addr_of_mut!(zs));
+	}
+
+	Ok(dcmp)
+}
+
+#[cfg(test)]
+mod test {
+	#[test]
+	fn test_resbin_extract() {
+		use std::fs;
+
+		let buf = fs::read("/Users/roymeurin/Desktop/resources.bin").unwrap();
+		let resb = super::ResBin::new(&buf).unwrap();
+		for (p, _) in resb.entries.iter() {
+			println!("{:?}", p);
+		}
+	}
 }
 
 /*/// Decodes a file buffer, given a key buffer
@@ -145,6 +208,6 @@ fn decode_file_with_key(key: &[u32], data: &[u8]) -> Result<Vec<u8>, E> {
 
 /// Decryption depth 1
 fn decrypt1(key: &[u32], data: &[u8]) -> Result<Vec<u8>, E> {
-	let out_buf = [u8; 8];
+	let out_buf = [0; 8];
 	let mut buf_idx = 0;
 }*/
