@@ -11,7 +11,7 @@ use std::io::{
 	Read
 };
 
-pub(crate) mod markup;
+//pub(crate) mod markup;
 pub(crate) mod resbin;
 
 /// Converts a 4-byte string into a 32-bit big endian integer.
