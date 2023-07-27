@@ -3,23 +3,21 @@ use nom::{
 	bytes::complete::{
 		tag,
 		take_till,
-		take_until
+		take_until,
 	},
 	character::complete::{
 		char,
 		hex_digit1,
 		line_ending,
 		u8,
-		u16
+		u16,
 	},
 	combinator::value,
 	IResult,
 	multi::many0,
 	sequence::{
 		delimited,
-		pair,
 		preceded,
-		terminated
 	}
 };
 
@@ -73,7 +71,7 @@ pub enum Token {
 
 /// <C#> ... </C#>
 fn choice(input: &str) -> IResult<&str, Token> {
-	let (input, n) = preceded(tag("<C"), terminated(u8, char('>')))?;
+	let (input, n) = delimited(tag("<C"), u8, char('>'))?;
 	let (input, txt) = take_till(delimited(tag("</C"), u8, char('>')))?;
 
 	match n {
