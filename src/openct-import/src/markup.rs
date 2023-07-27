@@ -74,7 +74,7 @@ pub enum Token {
 /// <C#> ... </C#>
 fn choice(input: &str) -> IResult<&str, Token> {
 	let (input, n) = preceded(tag("<C"), terminated(u8, char('>')))?;
-	let (input, txt) = take_till(pair(tag("</C"), pair(u8, char('>'))))?;
+	let (input, txt) = take_till(delimited(tag("</C"), u8, char('>')))?;
 
 	match n {
 		1 => Ok((input, Token::Choice1(txt.to_owned()))),
