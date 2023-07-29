@@ -1,15 +1,9 @@
 use nom::{
-  IResult,
-  error::ParseError,
-  combinator::value,
-  sequence::delimited,
-  character::complete::multispace0,
+    character::complete::multispace0, combinator::value, error::ParseError, sequence::delimited,
+    IResult,
 };
 
-use std::io::{
-	self,
-	Read
-};
+use std::io::{self, Read};
 
 //pub(crate) mod markup;
 pub(crate) mod resbin;
@@ -18,33 +12,35 @@ pub(crate) mod resbin;
 /// Byte strings longer than 4 bytes are truncated.
 #[macro_export]
 macro_rules! tag {
-	($b4: literal) => {
-		u32::from_be_bytes([$b4[3], $b4[2], $b4[1], $b4[0]])
-	}
+    ($b4: literal) => {
+        u32::from_be_bytes([$b4[3], $b4[2], $b4[1], $b4[0]])
+    };
 }
 
 /// Reads a null-terminated string from a buffer
 pub(crate) fn read_cstr(mut buf: impl Read) -> io::Result<String> {
-	let mut s = String::new();
-	let mut b = [0; 1];
+    let mut s = String::new();
+    let mut b = [0; 1];
 
-	loop {
-		buf.read_exact(&mut b)?;
-		if b[0] != 0 {
-			s.push(b[0] as char);
-		} else {
-			break;
-		}
-	}
+    loop {
+        buf.read_exact(&mut b)?;
+        if b[0] != 0 {
+            s.push(b[0] as char);
+        } else {
+            break;
+        }
+    }
 
-	Ok(s)
+    Ok(s)
 }
 
-/// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and 
+/// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
 /// trailing whitespace, returning the output of `inner`.
-pub(crate) fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+pub(crate) fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+    inner: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
-	F: Fn(&'a str) -> IResult<&'a str, O, E>,
+    F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
-	delimited(multispace0, inner, multispace0)
+    delimited(multispace0, inner, multispace0)
 }
