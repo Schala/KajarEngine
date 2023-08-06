@@ -1,5 +1,5 @@
 [package]
-name = "openct-scripting"
+name = "kajar"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
+bevy = "0.11.0"
 bitflags = "2.3.2"
-bytemuck = "1.13.1"
-bytes = "1.4.0"
