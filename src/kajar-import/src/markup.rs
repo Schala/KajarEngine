@@ -80,9 +80,9 @@ pub(crate) enum Token {
 
 /// <C#> ... </C#>
 fn choice(input: &str) -> IResult<&str, Token> {
-	let (input, n) = delimited(tag("<C"), u8, char('>'))(input)?;
+	let (input, n) = delimited(tag("<C"), alt((u8, char('E'))), char('>'))(input)?;
 	let (input, txt) = take_until("</C")(input)?;
-	let (input, _) = pair(u8, char('>'))(input)?; // nyomp!
+	let (input, _) = pair(alt((u8, char('E'))), char('>'))(input)?; // nyomp!
 
 	match n {
 		1 => Ok((input, Token::Choice1(txt.to_owned()))),

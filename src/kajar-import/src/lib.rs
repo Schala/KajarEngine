@@ -6,7 +6,9 @@ use nom::{
 use std::io::{self, Read};
 
 //pub(crate) mod markup;
-pub(crate) mod resbin;
+//pub(crate) mod resbin;
+//mod blowfish;
+mod tim;
 
 /// Converts a 4-byte string into a 32-bit big endian integer.
 /// Byte strings longer than 4 bytes are truncated.

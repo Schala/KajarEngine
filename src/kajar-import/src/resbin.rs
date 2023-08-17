@@ -1,10 +1,8 @@
 // Credit to https://github.com/jimzrt/ChronoMod
 
-use blowfish::BlowfishLE;
 use bytemuck::{bytes_of_mut, Zeroable};
 use bytemuck_derive::{Pod, Zeroable};
 use bytes::Buf;
-use cipher::{BlockDecrypt, KeyInit};
 
 use libz_sys::{
     inflate, inflateEnd, inflateInit2_, uInt, z_stream, zlibVersion, Bytef, Z_FINISH, Z_OK,
@@ -18,7 +16,7 @@ use std::{
     io::{self, Cursor, Read},
     mem::{size_of, MaybeUninit},
     path::PathBuf,
-    ptr::addr_of_mut,
+    ptr::{addr_of_mut, null, null_mut},
 };
 
 use crate::{read_cstr, tag};
@@ -42,16 +40,13 @@ pub struct ResEntry {
     size: u32,
 }
 
-#[derive(Debug)]
 pub struct ResBin {
     header: Header,
     entries: HashMap<PathBuf, (ResEntry, Vec<u8>)>,
-    cipher: BlowfishLE,
 }
 
 #[derive(Debug)]
 pub enum ResBinErr {
-    CipherInit,
     CmpRead(io::Error),
     Decmp(c_int),
     Dump(io::Error),
@@ -59,7 +54,7 @@ pub enum ResBinErr {
     EntryPath(PathBuf),
     EntryRead(io::Error),
     ExeRead(io::Error),
-    FileRead(PathBuf, io::Error),
+    FileRead(io::Error),
     HeaderMismatch(u32),
     HeaderRead(io::Error),
     KeyRead(io::Error),
@@ -68,17 +63,16 @@ pub enum ResBinErr {
 
 impl ResBin {
     /// Loads all data from resources.bin
-    pub fn load(filepath: &str, ctexe: &str) -> Result<ResBin, ResBinErr> {
-        // decryption key
-        let mut key = [0; 16];
+    pub fn load(filepath: &str, ctexe: &str) -> Result<Self, ResBinErr> {
+        // decryption key from EXE
         let mut exe = Cursor::new(fs::read(ctexe).map_err(|e| ResBinErr::ExeRead(e))?);
+        let mut key = [0; 64];
         exe.set_position(KEY_OFFSET);
-        exe.read_exact(&mut key[..])
+        exe.read_exact(bytes_of_mut(&mut key))
             .map_err(|e| ResBinErr::KeyRead(e))?;
 
         // buffer file
-        let buf =
-            fs::read(filepath).map_err(|e| ResBinErr::FileRead(PathBuf::from(filepath), e))?;
+        let buf = fs::read(filepath).map_err(|e| ResBinErr::FileRead(e))?;
 
         let mut header = Header::zeroed();
         let mut fc = Cursor::new(buf);
@@ -132,37 +126,37 @@ impl ResBin {
             entries.insert(path, (*ent, ddata));
         }
 
-        Ok(ResBin {
-            header,
-            entries,
-            cipher: BlowfishLE::new_from_slice(&key).map_err(|_| ResBinErr::CipherInit)?,
-        })
+        Ok(ResBin { header, entries })
     }
 
-    /// Decrypts a single file entry
+    /*/// Decrypts a single file entry
     pub fn decrypt(&mut self, path: &str) -> Result<(), ResBinErr> {
         let (info, data) = self
             .entries
             .get_mut(&PathBuf::from(path))
             .ok_or(ResBinErr::EntryPath(PathBuf::from(path)))?;
+        let info = info.clone();
 
-        data[0] ^= 0x75;
-        data[1] ^= 0xFA;
-        data[2] ^= 0x29;
-        data[3] ^= 0x95;
-        data[4] ^= 0x05;
-        data[5] ^= 0x4D;
-        data[6] ^= 0x41;
-        data[7] ^= 0x5F;
+        data[0] ^= 117;
+        data[1] ^= 250;
+        data[2] ^= 41;
+        data[3] ^= 149;
+        data[4] ^= 5;
+        data[5] ^= 77;
+        data[6] ^= 65;
+        data[7] ^= 95;
 
         let mut ddata = vec![0; info.size as usize];
-        for (block_in, block_out) in data.chunks(8).zip(ddata.chunks_mut(8)) {
-            self.cipher
-                .decrypt_block_b2b(block_in.into(), block_out.into());
-        }
+        self.ctx
+            .cipher_update_vec(data, &mut ddata)
+            .map_err(|e| ResBinErr::Crypt(e))?;
+        self.ctx
+            .cipher_final_vec(&mut ddata)
+            .map_err(|e| ResBinErr::Crypt(e))?;
+        let _ = self.entries.insert(PathBuf::from(path), (info, ddata));
 
         Ok(())
-    }
+    }*/
 
     /// Dumps the contents of a single entry to file.
     pub fn dump(&self, in_path: &str, out_path: &str) -> Result<(), ResBinErr> {
@@ -180,7 +174,7 @@ impl ResBin {
 
     /// Dumps all files in resources.bin
     pub fn dump_all(&self, out_path: &str) -> Result<(), ResBinErr> {
-        for (p, d) in self.entries.iter() {
+        for (p, _) in self.entries.iter() {
             if let Some(path) = p.to_str() {
                 self.dump(path, out_path)?;
             }
@@ -241,11 +235,11 @@ mod test {
     #[test]
     fn test_resbin_extract() {
         let mut resb = super::ResBin::load(
-            "/Users/roymeurin/Desktop/resources.bin",
-            "/Users/roymeurin/Downloads/Chrono Trigger.exe",
+            "/home/admin/Documents/GitHub/KajarEngine/utils/resources.bin",
+            "/home/admin/Documents/GitHub/KajarEngine/utils/Chrono Trigger.exe",
         )
         .unwrap();
-        resb.decrypt("string_1.bin").unwrap();
+        //resb.decrypt("string_1.bin").unwrap();
         resb.dump("string_1.bin", ".").unwrap();
         //assert_eq(resb.is_ok());
     }
