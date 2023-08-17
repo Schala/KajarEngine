@@ -1,11 +1,12 @@
 use bitflags::bitflags;
-use bytemuck::{bytes_of_mut, Zeroable};
+use bytemuck::{bytes_of_mut,Zeroable};
 use bytemuck_derive::{Pod, Zeroable};
 use bytes::Buf;
+use png::{BitDepth, ColorType, Encoder, EncodingError};
 
 use std::{
-    fs,
-    io::{self, Cursor, Read},
+    fs::{self, File},
+    io::{self, BufWriter, Cursor, Read},
 };
 
 bitflags! {
@@ -71,19 +72,23 @@ enum Header {
 pub enum TIMErr {
     BitsPerPixel(u32),
     FileRead(io::Error),
+    FileWrite(EncodingError),
     FlagsInvalid,
     HeaderRead(io::Error),
     ImageHeaderRead(io::Error),
     IndexRead(io::Error),
     Magic(u32),
+    PathWrite,
 }
 
 /// TIM image
 #[derive(Debug)]
 struct Image {
     header: Header,
-    pixels: Vec<u32>,
+    data: Vec<u8>,
     bpp: u32,
+    w: u16,
+    h: u16,
 }
 
 impl Image {
@@ -117,37 +122,54 @@ impl Image {
             let mut imgh = IndexedImageHeader::zeroed();
             c.read_exact(bytes_of_mut(&mut imgh))
                 .map_err(|e| TIMErr::ImageHeaderRead(e))?;
-            let real_width = match bpp {
+            let w = match bpp {
                 4 => imgh.w >> 2,
                 8 => imgh.w >> 1,
                 _ => return Err(TIMErr::BitsPerPixel(bpp)),
             };
 
             let mut idx = match bpp {
-                4 => vec![0; (real_width * imgh.h >> 1) as usize],
-                8 => vec![0; (real_width * imgh.h) as usize],
+                4 => vec![0; (w * imgh.h >> 1) as usize],
+                8 => vec![0; (w * imgh.h) as usize],
                 _ => return Err(TIMErr::BitsPerPixel(bpp)),
             };
 
             c.read_exact(&mut idx[..])
                 .map_err(|e| TIMErr::IndexRead(e))?;
 
-            let mut pixels = Vec::with_capacity((real_width * imgh.h) as usize);
+            let mut data = Vec::with_capacity((w * imgh.h * 4) as usize);
             for i in idx.iter() {
                 match bpp {
                     4 => {
-                        pixels.push(rgba5551_to_argb32(clut[(*i & 240) as usize] as u32));
-                        pixels.push(rgba5551_to_argb32(clut[(*i & 15) as usize] as u32));
-                    }
-                    8 => pixels.push(rgba5551_to_argb32(clut[*i as usize] as u32)),
+                        let (r, g, b, a) = rgba5551_to_rgba8888(clut[(*i & 240) as usize] as u32);
+                        data.push(r);
+                        data.push(g);
+                        data.push(b);
+                        data.push(a);
+
+                        let (r, g, b, a) = rgba5551_to_rgba8888(clut[(*i & 15) as usize] as u32);
+                        data.push(r);
+                        data.push(g);
+                        data.push(b);
+                        data.push(a);
+                    },
+                    8 => {
+                        let (r, g, b, a) = rgba5551_to_rgba8888(clut[*i as usize] as u32);
+                        data.push(r);
+                        data.push(g);
+                        data.push(b);
+                        data.push(a);
+                    },
                     _ => return Err(TIMErr::BitsPerPixel(bpp)),
                 }
             }
 
             Ok(Image {
                 header: Header::Indexed(header, imgh),
-                pixels,
+                data,
                 bpp,
+                w,
+                h: imgh.h,
             })
         } else {
             let mut header = NonIndexedHeader::zeroed();
@@ -155,33 +177,56 @@ impl Image {
                 .map_err(|e| TIMErr::HeaderRead(e))?;
 
             let npixels = (header.w * header.h) as usize;
-            let mut pixels = Vec::with_capacity(npixels);
+            let mut data = Vec::with_capacity(npixels * 4);
             for _ in 0..npixels {
-                pixels.push(rgba5551_to_argb32(c.get_u16_le() as u32));
+                let (r, g, b, a) = rgba5551_to_rgba8888(c.get_u16_le() as u32);
+                data.push(r);
+                data.push(g);
+                data.push(b);
+                data.push(a);
             }
 
             Ok(Image {
                 header: Header::NonIndexed(header),
-                pixels,
+                data,
                 bpp,
+                w: header.w,
+                h: header.h,
             })
         }
+    }
+
+    /// Saves the imported image to a PNG file
+    pub fn save(&self, path: &str) -> Result<(), TIMErr> {
+        let file = File::create(path).map_err(|_| TIMErr::PathWrite)?;
+        let ref mut w = BufWriter::new(file);
+        let mut enc = Encoder::new(w, self.w as u32, self.h as u32);
+
+        enc.set_color(ColorType::Rgba);
+        enc.set_depth(BitDepth::Eight);
+
+        enc.write_header()
+            .map_err(|e| TIMErr::FileWrite(e))?
+            .write_image_data(&self.data[..])
+            .map_err(|e| TIMErr::FileWrite(e))?;
+
+        Ok(())
     }
 }
 
 /// Expands a 5 bit value to a full byte
-const fn scale5to8(i: u32) -> u32 {
+const fn scale5to8(i: u8) -> u8 {
     (i << 3) | (i >> 2)
 }
 
-/// Converts a colour value from RGBA5551 to ARGB32
-const fn rgba5551_to_argb32(i: u32) -> u32 {
-    let r = scale5to8(i & 31);
-    let g = scale5to8((i >> 5) & 31);
-    let b = scale5to8((i >> 10) & 31);
-    let a = !scale5to8((i >> 15) & 31);
+/// Converts a colour value from RGBA5551 to RGBA8888
+const fn rgba5551_to_rgba8888(i: u32) -> (u8, u8, u8, u8) {
+    let r = scale5to8((i & 31) as u8);
+    let g = scale5to8(((i >> 5) & 31) as u8);
+    let b = scale5to8(((i >> 10) & 31) as u8);
+    let a = !scale5to8(((i >> 15) & 31) as u8);
 
-    (a << 24) | (r << 16) | (g << 8) | b
+    (r, g, b, a)
 }
 
 #[cfg(test)]
@@ -190,5 +235,11 @@ mod tests {
     fn test_tim_import() {
         let img = super::Image::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim");
         println!("{:?}", img);
+    }
+
+    #[test]
+    fn test_tim_export() {
+        let img = super::Image::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim").unwrap();
+        img.save("0025.png").unwrap();
     }
 }
