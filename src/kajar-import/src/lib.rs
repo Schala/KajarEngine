@@ -1,20 +1,15 @@
-use bytes::Buf;
-
 use nom::{
     character::complete::multispace0, combinator::value, error::ParseError, sequence::delimited,
     IResult,
 };
 
-use std::{
-    fs,
-    io::{self, Read},
-};
+use std::io::{self, Read};
 
-pub mod cc;
-pub mod ct;
+//pub(crate) mod markup;
+//pub(crate) mod resbin;
+//mod blowfish;
+mod tim;
 
-#[cfg(feature = "ct_win")]
-pub mod
 /// Converts a 4-byte string into a 32-bit big endian integer.
 /// Byte strings longer than 4 bytes are truncated.
 #[macro_export]
@@ -24,24 +19,15 @@ macro_rules! tag {
     };
 }
 
-/// Image import/export functionality
-pub trait Image {
-    type ImageError;
-
-    /// Loads in an image file
-    fn load(path: &str) -> Result<Self, ImageError>;
-
-    /// Saves the imported image to a PNG file
-    fn save_png(&self, path: &str) -> Result<(), ImageError> {
-}
-
 /// Reads a null-terminated string from a buffer
-pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
+pub(crate) fn read_cstr(mut buf: impl Read) -> io::Result<String> {
     let mut s = String::new();
+    let mut b = [0; 1];
+
     loop {
-        let c = buf.get_u8();
-        if c != 0 {
-            s.push(c as char);
+        buf.read_exact(&mut b)?;
+        if b[0] != 0 {
+            s.push(b[0] as char);
         } else {
             break;
         }
@@ -52,7 +38,7 @@ pub fn read_cstr(mut buf: impl Read) -> io::Result<String> {
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
 /// trailing whitespace, returning the output of `inner`.
-pub fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
+pub(crate) fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where

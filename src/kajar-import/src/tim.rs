@@ -1,7 +1,5 @@
-// Credit: https://www.chronocompendium.com/Term/Tim.html
-
 use bitflags::bitflags;
-use bytemuck::{bytes_of_mut, Zeroable};
+use bytemuck::{bytes_of_mut,Zeroable};
 use bytemuck_derive::{Pod, Zeroable};
 use bytes::Buf;
 use png::{BitDepth, ColorType, Encoder, EncodingError};
@@ -11,13 +9,11 @@ use std::{
     io::{self, BufWriter, Cursor, Read},
 };
 
-use crate::Image;
-
 bitflags! {
     /// Image attributes
     #[derive(Clone, Copy, Debug, Pod, Zeroable)]
     #[repr(C)]
-    struct Flags: u32 {
+    pub struct Flags: u32 {
         const BPP_4 = 0;
         const BPP_8 = 1;
         const BPP_16 = 2;
@@ -87,7 +83,7 @@ pub enum TIMErr {
 
 /// TIM image
 #[derive(Debug)]
-pub struct TIMImage {
+struct Image {
     header: Header,
     data: Vec<u8>,
     bpp: u32,
@@ -95,10 +91,9 @@ pub struct TIMImage {
     h: u16,
 }
 
-impl Image for TIMImage {
-    type ImageError = TIMErr;
-
-    fn load(path: &str) -> Result<TIMImage, TIMErr> {
+impl Image {
+    /// Loads in a TIM format image file
+    pub fn load(path: &str) -> Result<Image, TIMErr> {
         let mut c = Cursor::new(fs::read(path).map_err(|e| TIMErr::FileRead(e))?);
 
         let magic = c.get_u32_le();
@@ -157,14 +152,14 @@ impl Image for TIMImage {
                         data.push(g);
                         data.push(b);
                         data.push(a);
-                    }
+                    },
                     8 => {
                         let (r, g, b, a) = rgba5551_to_rgba8888(clut[*i as usize] as u32);
                         data.push(r);
                         data.push(g);
                         data.push(b);
                         data.push(a);
-                    }
+                    },
                     _ => return Err(TIMErr::BitsPerPixel(bpp)),
                 }
             }
@@ -201,7 +196,8 @@ impl Image for TIMImage {
         }
     }
 
-    fn save_png(&self, path: &str) -> Result<(), TIMErr> {
+    /// Saves the imported image to a PNG file
+    pub fn save(&self, path: &str) -> Result<(), TIMErr> {
         let file = File::create(path).map_err(|_| TIMErr::PathWrite)?;
         let ref mut w = BufWriter::new(file);
         let mut enc = Encoder::new(w, self.w as u32, self.h as u32);
@@ -224,7 +220,7 @@ const fn scale5to8(i: u8) -> u8 {
 }
 
 /// Converts a colour value from RGBA5551 to RGBA8888
-pub const fn rgba5551_to_rgba8888(i: u32) -> (u8, u8, u8, u8) {
+const fn rgba5551_to_rgba8888(i: u32) -> (u8, u8, u8, u8) {
     let r = scale5to8((i & 31) as u8);
     let g = scale5to8(((i >> 5) & 31) as u8);
     let b = scale5to8(((i >> 10) & 31) as u8);
@@ -237,14 +233,13 @@ pub const fn rgba5551_to_rgba8888(i: u32) -> (u8, u8, u8, u8) {
 mod tests {
     #[test]
     fn test_tim_import() {
-        let img = super::TIMImage::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim");
+        let img = super::Image::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim");
         println!("{:?}", img);
     }
 
     #[test]
     fn test_tim_export() {
-        let img = super::TIMImage::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim")
-            .unwrap();
+        let img = super::Image::load("/home/admin/Documents/GitHub/KajarEngine/test data/0025.tim").unwrap();
         img.save("0025.png").unwrap();
     }
 }
