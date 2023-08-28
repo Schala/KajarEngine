@@ -21,6 +21,12 @@ use std::{
 
 use crate::{read_cstr, tag};
 
+mod blowfish;
+mod hca;
+
+use blowfish;
+use hca;
+
 const KEY_OFFSET: u64 = 0x398EE8;
 
 #[derive(Clone, Copy, Debug, Pod, Zeroable)]
